@@ -73,6 +73,13 @@ public class UserDAO {
             WHERE id = ?
             """;
 
+    private static final String UPDATE_PASSWORD_HASH = """
+            UPDATE users
+            SET password_hash = ?,
+                updated_at = CURRENT_TIMESTAMP
+            WHERE id = ?
+            """;
+
     public User createUser(User user) {
         try (Connection connection = DBConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(INSERT_USER, Statement.RETURN_GENERATED_KEYS)) {
@@ -142,6 +149,17 @@ public class UserDAO {
             return statement.executeUpdate() > 0;
         } catch (SQLException exception) {
             throw new DAOException("Failed to update last login.", exception);
+        }
+    }
+
+    public boolean updatePasswordHash(long userId, String passwordHash) {
+        try (Connection connection = DBConnection.getConnection();
+             PreparedStatement statement = connection.prepareStatement(UPDATE_PASSWORD_HASH)) {
+            statement.setString(1, passwordHash);
+            statement.setLong(2, userId);
+            return statement.executeUpdate() > 0;
+        } catch (SQLException exception) {
+            throw new DAOException("Failed to update password hash.", exception);
         }
     }
 

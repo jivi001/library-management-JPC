@@ -243,7 +243,7 @@
 </head>
 <body>
 <c:url value="/signup" var="signupAction" />
-<c:url value="/login.jsp" var="loginPageUrl" />
+<c:url value="/login" var="loginPageUrl" />
 
 <main class="shell">
     <section class="hero">
@@ -297,12 +297,12 @@
             <div class="field-grid">
                 <div class="field">
                     <label for="password">Password</label>
-                    <input id="password" name="password" type="password" minlength="8" maxlength="72"
-                           placeholder="Minimum 8 characters" required>
+                    <input id="password" name="password" type="password" minlength="12" maxlength="72"
+                           placeholder="Minimum 12 characters" required>
                 </div>
                 <div class="field">
                     <label for="confirmPassword">Confirm Password</label>
-                    <input id="confirmPassword" name="confirmPassword" type="password" minlength="8" maxlength="72"
+                    <input id="confirmPassword" name="confirmPassword" type="password" minlength="12" maxlength="72"
                            placeholder="Re-enter password" required>
                 </div>
             </div>

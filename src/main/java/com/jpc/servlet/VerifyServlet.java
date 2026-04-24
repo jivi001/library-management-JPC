@@ -2,6 +2,7 @@ package com.jpc.servlet;
 
 import com.jpc.dao.DAOException;
 import com.jpc.dao.UserDAO;
+import com.jpc.util.ValidationUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -18,29 +19,22 @@ public class VerifyServlet extends HttpServlet {
     @Override
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/plain;charset=UTF-8");
-
-        String token = normalize(request.getParameter("token"));
-        if (token == null || token.length() != 64 || !token.matches("[A-Fa-f0-9]{64}")) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Invalid verification token.");
+        String token = ValidationUtil.normalizeOptional(request.getParameter("token"));
+        if (!ValidationUtil.isValidVerificationToken(token)) {
+            response.sendRedirect(request.getContextPath() + "/login?verified=invalid");
             return;
         }
 
         try {
             boolean verified = userDAO.verifyUser(token);
             if (!verified) {
-                response.sendError(HttpServletResponse.SC_BAD_REQUEST, "Verification token is invalid or expired.");
+                response.sendRedirect(request.getContextPath() + "/login?verified=invalid");
                 return;
             }
 
-            response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().write("Account verified successfully. You can now log in.");
+            response.sendRedirect(request.getContextPath() + "/login?verified=success");
         } catch (DAOException exception) {
             throw new ServletException("Unable to verify account.", exception);
         }
-    }
-
-    private String normalize(String value) {
-        return value == null ? null : value.trim();
     }
 }

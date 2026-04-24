@@ -251,10 +251,21 @@
     </style>
 </head>
 <body>
-<c:url value="/books.jsp" var="booksPageUrl" />
+<c:url value="/books" var="booksPageUrl" />
 <c:url value="/logout" var="logoutAction" />
 
 <main class="page">
+    <c:if test="${not empty requestScope.message}">
+        <div class="card" style="margin-bottom: 18px; color: #027a48; border-color: #abefc6; background: #ecfdf3;">
+            <c:out value="${requestScope.message}" />
+        </div>
+    </c:if>
+    <c:if test="${not empty requestScope.errorMessage}">
+        <div class="card" style="margin-bottom: 18px; color: #b42318; border-color: #fecdca; background: #fff1f2;">
+            <c:out value="${requestScope.errorMessage}" />
+        </div>
+    </c:if>
+
     <section class="hero">
         <div class="topbar">
             <div>
@@ -349,7 +360,7 @@
 
                 <div class="link-card">
                     <strong>Next step</strong>
-                    <p>Connect this page to a dedicated dashboard servlet and forward the latest stats as request attributes.</p>
+                    <p>Dashboard metrics and recent activity are now provided by the dashboard servlet for the current signed-in user.</p>
                 </div>
             </div>
         </aside>

@@ -226,7 +226,7 @@
 </head>
 <body>
 <c:url value="/login" var="loginAction" />
-<c:url value="/signup.jsp" var="signupPageUrl" />
+<c:url value="/signup" var="signupPageUrl" />
 
 <main class="layout">
     <aside class="aside">
@@ -260,8 +260,17 @@
         <c:if test="${param.verified eq 'success'}">
             <div class="alert success">Your account has been verified. You can log in now.</div>
         </c:if>
+        <c:if test="${param.verified eq 'invalid'}">
+            <div class="alert error">The verification link is invalid or has expired.</div>
+        </c:if>
+        <c:if test="${param.signup eq 'success'}">
+            <div class="alert success">Signup successful. Please check your email and verify your account.</div>
+        </c:if>
         <c:if test="${param.logout eq 'success'}">
             <div class="alert success">You have been logged out successfully.</div>
+        </c:if>
+        <c:if test="${param.session eq 'expired'}">
+            <div class="alert error">Your session expired. Please log in again.</div>
         </c:if>
         <c:if test="${not empty requestScope.errorMessage}">
             <div class="alert error">${requestScope.errorMessage}</div>

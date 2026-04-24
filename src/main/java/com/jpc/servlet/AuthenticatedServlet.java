@@ -1,29 +1,41 @@
 package com.jpc.servlet;
 
+import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 
 abstract class AuthenticatedServlet extends HttpServlet {
+
+    protected static final String USER_ID_SESSION_KEY = "userId";
+    protected static final String USER_EMAIL_SESSION_KEY = "userEmail";
+    protected static final String USER_NAME_SESSION_KEY = "userName";
+    protected static final String AUTHENTICATED_SESSION_KEY = "authenticated";
+    protected static final int SESSION_TIMEOUT_SECONDS = 30 * 60;
 
     protected Long requireAuthenticatedUserId(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         HttpSession session = request.getSession(false);
         if (session == null) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Please log in to continue.");
+            redirectToLogin(request, response, "expired");
             return null;
         }
 
-        Object userIdAttribute = session.getAttribute("userId");
-        if (!(userIdAttribute instanceof Number userIdNumber) || userIdNumber.longValue() <= 0L) {
+        Object authenticatedAttribute = session.getAttribute(AUTHENTICATED_SESSION_KEY);
+        Object userIdAttribute = session.getAttribute(USER_ID_SESSION_KEY);
+        if (!(authenticatedAttribute instanceof Boolean authenticated) || !authenticated
+                || !(userIdAttribute instanceof Number userIdNumber) || userIdNumber.longValue() <= 0L) {
             session.invalidate();
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Your session is invalid. Please log in again.");
+            redirectToLogin(request, response, "expired");
             return null;
         }
 
+        applyNoCacheHeaders(response);
         return userIdNumber.longValue();
     }
 
@@ -68,6 +80,56 @@ abstract class AuthenticatedServlet extends HttpServlet {
         response.setContentType("application/json;charset=UTF-8");
         response.setStatus(status);
         response.getWriter().write(body);
+    }
+
+    protected boolean isAuthenticatedSession(HttpServletRequest request) {
+        HttpSession session = request.getSession(false);
+        if (session == null) {
+            return false;
+        }
+
+        Object authenticatedAttribute = session.getAttribute(AUTHENTICATED_SESSION_KEY);
+        Object userIdAttribute = session.getAttribute(USER_ID_SESSION_KEY);
+        return authenticatedAttribute instanceof Boolean authenticated
+                && authenticated
+                && userIdAttribute instanceof Number userIdNumber
+                && userIdNumber.longValue() > 0L;
+    }
+
+    protected void forwardToView(HttpServletRequest request, HttpServletResponse response, String viewPath)
+            throws ServletException, IOException {
+        request.getRequestDispatcher(viewPath).forward(request, response);
+    }
+
+    protected void redirect(HttpServletRequest request, HttpServletResponse response, String path) throws IOException {
+        response.sendRedirect(request.getContextPath() + path);
+    }
+
+    protected void redirectWithQuery(HttpServletRequest request, HttpServletResponse response, String path,
+                                     String parameterName, String value) throws IOException {
+        String encodedValue = URLEncoder.encode(value, StandardCharsets.UTF_8);
+        response.sendRedirect(request.getContextPath() + path + "?" + parameterName + "=" + encodedValue);
+    }
+
+    protected void redirectWithTwoQueries(HttpServletRequest request, HttpServletResponse response, String path,
+                                          String firstParameterName, String firstValue,
+                                          String secondParameterName, String secondValue) throws IOException {
+        String encodedFirst = URLEncoder.encode(firstValue, StandardCharsets.UTF_8);
+        String encodedSecond = URLEncoder.encode(secondValue, StandardCharsets.UTF_8);
+        response.sendRedirect(request.getContextPath() + path
+                + "?" + firstParameterName + "=" + encodedFirst
+                + "&" + secondParameterName + "=" + encodedSecond);
+    }
+
+    protected void redirectToLogin(HttpServletRequest request, HttpServletResponse response, String reason)
+            throws IOException {
+        redirectWithQuery(request, response, "/login", "session", reason);
+    }
+
+    protected void applyNoCacheHeaders(HttpServletResponse response) {
+        response.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+        response.setHeader("Pragma", "no-cache");
+        response.setDateHeader("Expires", 0);
     }
 
     protected String escapeJson(String value) {

@@ -4,71 +4,78 @@ import com.jpc.dao.DAOException;
 import com.jpc.dao.UserDAO;
 import com.jpc.model.User;
 import com.jpc.util.PasswordUtil;
+import com.jpc.util.ValidationUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @WebServlet("/login")
-public class LoginServlet extends HttpServlet {
+public class LoginServlet extends AuthenticatedServlet {
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
-    private static final int SESSION_TIMEOUT_SECONDS = 30 * 60;
+    private static final String LOGIN_VIEW = "/login.jsp";
     private final UserDAO userDAO = new UserDAO();
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        applyNoCacheHeaders(response);
+        if (isAuthenticatedSession(request)) {
+            redirect(request, response, "/dashboard");
+            return;
+        }
+        forwardToView(request, response, LOGIN_VIEW);
+    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/plain;charset=UTF-8");
-
-        String email = normalizeEmail(request.getParameter("email"));
+        String email = ValidationUtil.normalizeEmail(request.getParameter("email"));
         String password = request.getParameter("password");
 
-        String validationError = validateLogin(email, password);
+        String validationError = ValidationUtil.validateLogin(email, password);
         if (validationError != null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, validationError);
+            request.setAttribute("errorMessage", validationError);
+            forwardToView(request, response, LOGIN_VIEW);
             return;
         }
 
         try {
             Optional<User> existingUser = userDAO.findByEmail(email);
             if (existingUser.isEmpty()) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid email or password.");
+                PasswordUtil.performDummyVerification(password);
+                request.setAttribute("errorMessage", "Invalid email or password.");
+                forwardToView(request, response, LOGIN_VIEW);
                 return;
             }
 
             User user = existingUser.get();
-            if (!user.isActive()) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Account is inactive.");
-                return;
-            }
-            if (!user.isVerified()) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Please verify your email before logging in.");
-                return;
-            }
-            if (!PasswordUtil.verifyPassword(password, user.getPasswordHash())) {
-                response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "Invalid email or password.");
+            boolean passwordMatches = PasswordUtil.verifyPassword(password, user.getPasswordHash());
+            if (!passwordMatches) {
+                request.setAttribute("errorMessage", "Invalid email or password.");
+                forwardToView(request, response, LOGIN_VIEW);
                 return;
             }
 
-            Optional<User> verifiedUser = userDAO.findVerifiedActiveUserByEmail(email);
-            if (verifiedUser.isEmpty()) {
-                response.sendError(HttpServletResponse.SC_FORBIDDEN, "Account is not available for login.");
+            if (!user.isActive() || !user.isVerified()) {
+                PasswordUtil.performDummyVerification(password);
+                request.setAttribute("errorMessage", "Invalid email or password.");
+                forwardToView(request, response, LOGIN_VIEW);
                 return;
             }
 
-            createSecureSession(request, verifiedUser.get());
-            userDAO.updateLastLogin(verifiedUser.get().getId());
+            if (PasswordUtil.needsRehash(user.getPasswordHash())) {
+                String upgradedHash = PasswordUtil.hashPassword(password);
+                userDAO.updatePasswordHash(user.getId(), upgradedHash);
+            }
 
-            response.setStatus(HttpServletResponse.SC_OK);
-            response.getWriter().write("Login successful.");
+            createSecureSession(request, user);
+            userDAO.updateLastLogin(user.getId());
+            redirect(request, response, "/dashboard");
         } catch (DAOException exception) {
             throw new ServletException("Unable to complete login.", exception);
         }
@@ -81,27 +88,11 @@ public class LoginServlet extends HttpServlet {
         }
 
         HttpSession session = request.getSession(true);
-        request.changeSessionId();
         session.setMaxInactiveInterval(SESSION_TIMEOUT_SECONDS);
-        session.setAttribute("userId", user.getId());
-        session.setAttribute("userEmail", user.getEmail());
-        session.setAttribute("userName", user.getFullName());
-    }
-
-    private String validateLogin(String email, String password) {
-        if (!EMAIL_PATTERN.matcher(email).matches() || email.length() > 255) {
-            return "Please provide a valid email address.";
-        }
-        if (password == null || password.isBlank()) {
-            return "Password is required.";
-        }
-        return null;
-    }
-
-    private String normalizeEmail(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.trim().toLowerCase(Locale.ROOT);
+        session.setAttribute(AUTHENTICATED_SESSION_KEY, Boolean.TRUE);
+        session.setAttribute(USER_ID_SESSION_KEY, user.getId());
+        session.setAttribute(USER_EMAIL_SESSION_KEY, user.getEmail());
+        session.setAttribute(USER_NAME_SESSION_KEY, user.getFullName());
+        session.setAttribute("authenticatedAt", System.currentTimeMillis());
     }
 }

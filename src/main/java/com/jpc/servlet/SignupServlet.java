@@ -6,46 +6,60 @@ import com.jpc.model.User;
 import com.jpc.util.EmailUtil;
 import com.jpc.util.PasswordUtil;
 import com.jpc.util.TokenUtil;
+import com.jpc.util.ValidationUtil;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.Locale;
 import java.util.Optional;
-import java.util.regex.Pattern;
 
 @WebServlet("/signup")
 public class SignupServlet extends HttpServlet {
 
-    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+$");
+    private static final String SIGNUP_VIEW = "/signup.jsp";
     private final UserDAO userDAO = new UserDAO();
+
+    @Override
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+        HttpSession session = request.getSession(false);
+        if (session != null
+                && Boolean.TRUE.equals(session.getAttribute("authenticated"))
+                && session.getAttribute("userId") instanceof Number userId
+                && userId.longValue() > 0L) {
+            response.sendRedirect(request.getContextPath() + "/dashboard");
+            return;
+        }
+        request.getRequestDispatcher(SIGNUP_VIEW).forward(request, response);
+    }
 
     @Override
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
-        response.setContentType("text/plain;charset=UTF-8");
-
-        String fullName = normalize(request.getParameter("fullName"));
-        String email = normalizeEmail(request.getParameter("email"));
+        String fullName = ValidationUtil.normalize(request.getParameter("fullName"));
+        String email = ValidationUtil.normalizeEmail(request.getParameter("email"));
         String password = request.getParameter("password");
         String confirmPassword = request.getParameter("confirmPassword");
 
-        String validationError = validateSignup(fullName, email, password, confirmPassword);
+        String validationError = ValidationUtil.validateSignup(fullName, email, password, confirmPassword);
         if (validationError != null) {
-            response.sendError(HttpServletResponse.SC_BAD_REQUEST, validationError);
+            request.setAttribute("errorMessage", validationError);
+            request.getRequestDispatcher(SIGNUP_VIEW).forward(request, response);
             return;
         }
 
         try {
             Optional<User> existingUser = userDAO.findByEmail(email);
             if (existingUser.isPresent()) {
-                response.sendError(HttpServletResponse.SC_CONFLICT, "An account with this email already exists.");
+                request.setAttribute("errorMessage", "An account with this email already exists.");
+                request.getRequestDispatcher(SIGNUP_VIEW).forward(request, response);
                 return;
             }
 
@@ -66,27 +80,10 @@ public class SignupServlet extends HttpServlet {
             User savedUser = userDAO.createUser(user);
             sendVerificationEmail(request, savedUser.getEmail(), token);
 
-            response.setStatus(HttpServletResponse.SC_CREATED);
-            response.getWriter().write("Signup successful. Please verify your email before logging in.");
+            response.sendRedirect(request.getContextPath() + "/login?signup=success");
         } catch (DAOException | IllegalStateException exception) {
             throw new ServletException("Unable to complete signup.", exception);
         }
-    }
-
-    private String validateSignup(String fullName, String email, String password, String confirmPassword) {
-        if (fullName == null || fullName.length() < 2 || fullName.length() > 120) {
-            return "Full name must be between 2 and 120 characters.";
-        }
-        if (!EMAIL_PATTERN.matcher(email).matches() || email.length() > 255) {
-            return "Please provide a valid email address.";
-        }
-        if (password == null || password.length() < 8 || password.length() > 72) {
-            return "Password must be between 8 and 72 characters.";
-        }
-        if (!password.equals(confirmPassword)) {
-            return "Password and confirm password must match.";
-        }
-        return null;
     }
 
     private void sendVerificationEmail(HttpServletRequest request, String email, String token) {
@@ -114,14 +111,5 @@ public class SignupServlet extends HttpServlet {
         boolean defaultHttp = "http".equalsIgnoreCase(request.getScheme()) && port == 80;
         boolean defaultHttps = "https".equalsIgnoreCase(request.getScheme()) && port == 443;
         return defaultHttp || defaultHttps ? "" : ":" + port;
-    }
-
-    private String normalize(String value) {
-        return value == null ? null : value.trim().replaceAll("\\s+", " ");
-    }
-
-    private String normalizeEmail(String value) {
-        String normalized = normalize(value);
-        return normalized == null ? "" : normalized.toLowerCase(Locale.ROOT);
     }
 }

@@ -6,6 +6,7 @@ public final class PasswordUtil {
 
     private static final int DEFAULT_LOG_ROUNDS = 12;
     private static final int LOG_ROUNDS = resolveLogRounds();
+    private static final String DUMMY_HASH = BCrypt.hashpw("dummy-password-value", BCrypt.gensalt(LOG_ROUNDS));
 
     private PasswordUtil() {
     }
@@ -25,6 +26,35 @@ public final class PasswordUtil {
             return BCrypt.checkpw(plainPassword, hashedPassword);
         } catch (IllegalArgumentException exception) {
             return false;
+        }
+    }
+
+    public static void performDummyVerification(String plainPassword) {
+        if (plainPassword == null || plainPassword.isBlank()) {
+            return;
+        }
+
+        try {
+            BCrypt.checkpw(plainPassword, DUMMY_HASH);
+        } catch (IllegalArgumentException ignored) {
+            // Ignore invalid verification on the dummy hash path.
+        }
+    }
+
+    public static boolean needsRehash(String hashedPassword) {
+        if (hashedPassword == null || hashedPassword.isBlank()) {
+            return true;
+        }
+
+        try {
+            String[] parts = hashedPassword.split("\\$");
+            if (parts.length < 3) {
+                return true;
+            }
+            int cost = Integer.parseInt(parts[2]);
+            return cost < LOG_ROUNDS;
+        } catch (NumberFormatException exception) {
+            return true;
         }
     }
 
@@ -51,6 +81,9 @@ public final class PasswordUtil {
     private static void validatePlainPassword(String plainPassword) {
         if (plainPassword == null || plainPassword.isBlank()) {
             throw new IllegalArgumentException("Password must not be null or blank.");
+        }
+        if (plainPassword.length() > ValidationUtil.MAX_PASSWORD_LENGTH) {
+            throw new IllegalArgumentException("Password exceeds BCrypt maximum supported length.");
         }
     }
 }

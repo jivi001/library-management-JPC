@@ -280,7 +280,7 @@
 <c:url value="/books/add" var="addBookAction" />
 <c:url value="/books/issue" var="issueBookAction" />
 <c:url value="/books/return" var="returnBookAction" />
-<c:url value="/dashboard.jsp" var="dashboardPageUrl" />
+<c:url value="/dashboard" var="dashboardPageUrl" />
 <c:url value="/logout" var="logoutAction" />
 
 <main class="page">
@@ -304,7 +304,12 @@
     </section>
 
     <c:if test="${not empty requestScope.message}">
-        <div class="alert">${requestScope.message}</div>
+        <div class="alert"><c:out value="${requestScope.message}" /></div>
+    </c:if>
+    <c:if test="${not empty requestScope.errorMessage}">
+        <div class="alert" style="background: #fff1f2; color: #b42318; border-color: #fecdca;">
+            <c:out value="${requestScope.errorMessage}" />
+        </div>
     </c:if>
 
     <section class="content">
