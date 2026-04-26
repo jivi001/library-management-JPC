@@ -30,10 +30,16 @@ public class SignupServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        if (session != null
-                && Boolean.TRUE.equals(session.getAttribute("authenticated"))
-                && session.getAttribute("userId") instanceof Number userId
-                && userId.longValue() > 0L) {
+        boolean authenticated = false;
+        if (session != null && Boolean.TRUE.equals(session.getAttribute("authenticated"))) {
+            Object userIdObj = session.getAttribute("userId");
+            if (userIdObj instanceof Number) {
+                Number userId = (Number) userIdObj;
+                authenticated = userId.longValue() > 0L;
+            }
+        }
+        
+        if (authenticated) {
             response.sendRedirect(request.getContextPath() + "/dashboard");
             return;
         }

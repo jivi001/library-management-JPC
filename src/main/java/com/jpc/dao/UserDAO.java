@@ -14,71 +14,33 @@ import java.util.Optional;
 
 public class UserDAO {
 
-    private static final String INSERT_USER = """
-            INSERT INTO users (
-                full_name,
-                email,
-                password_hash,
-                is_verified,
-                email_verification_token,
-                email_verification_expires_at,
-                email_verified_at,
-                last_login_at,
-                is_active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+    private static final String INSERT_USER = "INSERT INTO users (" +
+            "full_name, email, password_hash, verified, email_verification_token, " +
+            "email_verification_expires_at, email_verified_at, last_login_at, active" +
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    private static final String SELECT_USER_BY_ID = """
-            SELECT id, full_name, email, password_hash, is_verified, email_verification_token,
-                   email_verification_expires_at, email_verified_at, last_login_at, is_active,
-                   created_at, updated_at
-            FROM users
-            WHERE id = ?
-            """;
+    private static final String SELECT_USER_BY_ID = "SELECT id, full_name, email, password_hash, verified, " +
+            "email_verification_token, email_verification_expires_at, email_verified_at, last_login_at, active, " +
+            "created_at, updated_at FROM users WHERE id = ?";
 
-    private static final String SELECT_USER_BY_EMAIL = """
-            SELECT id, full_name, email, password_hash, is_verified, email_verification_token,
-                   email_verification_expires_at, email_verified_at, last_login_at, is_active,
-                   created_at, updated_at
-            FROM users
-            WHERE email = ?
-            """;
+    private static final String SELECT_USER_BY_EMAIL = "SELECT id, full_name, email, password_hash, verified, " +
+            "email_verification_token, email_verification_expires_at, email_verified_at, last_login_at, active, " +
+            "created_at, updated_at FROM users WHERE email = ?";
 
-    private static final String SELECT_VERIFIED_ACTIVE_USER_BY_EMAIL = """
-            SELECT id, full_name, email, password_hash, is_verified, email_verification_token,
-                   email_verification_expires_at, email_verified_at, last_login_at, is_active,
-                   created_at, updated_at
-            FROM users
-            WHERE email = ? AND is_verified = 1 AND is_active = 1
-            """;
+    private static final String SELECT_VERIFIED_ACTIVE_USER_BY_EMAIL = "SELECT id, full_name, email, password_hash, " +
+            "verified, email_verification_token, email_verification_expires_at, email_verified_at, last_login_at, " +
+            "active, created_at, updated_at FROM users WHERE email = ? AND verified = 1 AND active = 1";
 
-    private static final String VERIFY_USER = """
-            UPDATE users
-            SET is_verified = 1,
-                email_verified_at = CURRENT_TIMESTAMP,
-                email_verification_token = NULL,
-                email_verification_expires_at = NULL,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE email_verification_token = ?
-              AND is_verified = 0
-              AND is_active = 1
-              AND email_verification_expires_at IS NOT NULL
-              AND email_verification_expires_at >= CURRENT_TIMESTAMP
-            """;
+    private static final String VERIFY_USER = "UPDATE users SET verified = 1, email_verified_at = CURRENT_TIMESTAMP, " +
+            "email_verification_token = NULL, email_verification_expires_at = NULL, updated_at = CURRENT_TIMESTAMP " +
+            "WHERE email_verification_token = ? AND verified = 0 AND active = 1 " +
+            "AND email_verification_expires_at IS NOT NULL AND email_verification_expires_at >= CURRENT_TIMESTAMP";
 
-    private static final String UPDATE_LAST_LOGIN = """
-            UPDATE users
-            SET last_login_at = CURRENT_TIMESTAMP,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """;
+    private static final String UPDATE_LAST_LOGIN = "UPDATE users SET last_login_at = CURRENT_TIMESTAMP, " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ?";
 
-    private static final String UPDATE_PASSWORD_HASH = """
-            UPDATE users
-            SET password_hash = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """;
+    private static final String UPDATE_PASSWORD_HASH = "UPDATE users SET password_hash = ?, " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ?";
 
     public User createUser(User user) {
         try (Connection connection = DBConnection.getConnection();
@@ -196,12 +158,12 @@ public class UserDAO {
                 resultSet.getString("full_name"),
                 resultSet.getString("email"),
                 resultSet.getString("password_hash"),
-                resultSet.getBoolean("is_verified"),
+                resultSet.getBoolean("verified"),
                 resultSet.getString("email_verification_token"),
                 toLocalDateTime(resultSet.getTimestamp("email_verification_expires_at")),
                 toLocalDateTime(resultSet.getTimestamp("email_verified_at")),
                 toLocalDateTime(resultSet.getTimestamp("last_login_at")),
-                resultSet.getBoolean("is_active"),
+                resultSet.getBoolean("active"),
                 toLocalDateTime(resultSet.getTimestamp("created_at")),
                 toLocalDateTime(resultSet.getTimestamp("updated_at"))
         );

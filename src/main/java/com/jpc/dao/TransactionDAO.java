@@ -17,92 +17,43 @@ import java.util.Optional;
 
 public class TransactionDAO {
 
-    private static final String LOCK_ACTIVE_USER = """
-            SELECT id
-            FROM users
-            WHERE id = ? AND is_active = 1
-            FOR UPDATE
-            """;
+    private static final String LOCK_ACTIVE_USER = "SELECT id FROM users " +
+            "WHERE id = ? AND active = 1 FOR UPDATE";
 
-    private static final String LOCK_ACTIVE_BOOK = """
-            SELECT id, available_copies
-            FROM books
-            WHERE id = ? AND is_active = 1
-            FOR UPDATE
-            """;
+    private static final String LOCK_ACTIVE_BOOK = "SELECT id, available_copies FROM books " +
+            "WHERE id = ? AND active = 1 FOR UPDATE";
 
-    private static final String INSERT_TRANSACTION = """
-            INSERT INTO transactions (
-                user_id,
-                book_id,
-                borrowed_at,
-                due_at,
-                returned_at,
-                status,
-                fine_amount,
-                notes
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+    private static final String INSERT_TRANSACTION = "INSERT INTO transactions (" +
+            "user_id, book_id, borrowed_at, due_at, returned_at, status, fine_amount, notes" +
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
 
-    private static final String DECREMENT_AVAILABLE_COPIES = """
-            UPDATE books
-            SET available_copies = available_copies - 1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """;
+    private static final String DECREMENT_AVAILABLE_COPIES = "UPDATE books " +
+            "SET available_copies = available_copies - 1, updated_at = CURRENT_TIMESTAMP " +
+            "WHERE id = ?";
 
-    private static final String LOCK_ACTIVE_TRANSACTION = """
-            SELECT id, user_id, book_id, borrowed_at, due_at, returned_at, status, fine_amount,
-                   notes, created_at, updated_at
-            FROM transactions
-            WHERE id = ?
-              AND returned_at IS NULL
-              AND status IN ('BORROWED', 'OVERDUE')
-            FOR UPDATE
-            """;
+    private static final String LOCK_ACTIVE_TRANSACTION = "SELECT id, user_id, book_id, borrowed_at, due_at, " +
+            "returned_at, status, fine_amount, notes, created_at, updated_at FROM transactions " +
+            "WHERE id = ? AND returned_at IS NULL AND status IN ('BORROWED', 'OVERDUE') FOR UPDATE";
 
-    private static final String UPDATE_RETURN_TRANSACTION = """
-            UPDATE transactions
-            SET returned_at = ?,
-                status = 'RETURNED',
-                fine_amount = ?,
-                notes = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """;
+    private static final String UPDATE_RETURN_TRANSACTION = "UPDATE transactions SET " +
+            "returned_at = ?, status = 'RETURNED', fine_amount = ?, notes = ?, " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ?";
 
-    private static final String INCREMENT_AVAILABLE_COPIES = """
-            UPDATE books
-            SET available_copies = available_copies + 1,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """;
+    private static final String INCREMENT_AVAILABLE_COPIES = "UPDATE books " +
+            "SET available_copies = available_copies + 1, updated_at = CURRENT_TIMESTAMP " +
+            "WHERE id = ?";
 
-    private static final String SELECT_TRANSACTION_BY_ID = """
-            SELECT id, user_id, book_id, borrowed_at, due_at, returned_at, status, fine_amount,
-                   notes, created_at, updated_at
-            FROM transactions
-            WHERE id = ?
-            """;
+    private static final String SELECT_TRANSACTION_BY_ID = "SELECT id, user_id, book_id, borrowed_at, due_at, " +
+            "returned_at, status, fine_amount, notes, created_at, updated_at FROM transactions WHERE id = ?";
 
-    private static final String SELECT_TRANSACTIONS_BY_USER_ID = """
-            SELECT id, user_id, book_id, borrowed_at, due_at, returned_at, status, fine_amount,
-                   notes, created_at, updated_at
-            FROM transactions
-            WHERE user_id = ?
-            ORDER BY borrowed_at DESC, id DESC
-            """;
+    private static final String SELECT_TRANSACTIONS_BY_USER_ID = "SELECT id, user_id, book_id, borrowed_at, " +
+            "due_at, returned_at, status, fine_amount, notes, created_at, updated_at FROM transactions " +
+            "WHERE user_id = ? ORDER BY borrowed_at DESC, id DESC";
 
-    private static final String SELECT_ACTIVE_TRANSACTION_BY_BOOK_ID = """
-            SELECT id, user_id, book_id, borrowed_at, due_at, returned_at, status, fine_amount,
-                   notes, created_at, updated_at
-            FROM transactions
-            WHERE book_id = ?
-              AND returned_at IS NULL
-              AND status IN ('BORROWED', 'OVERDUE')
-            ORDER BY borrowed_at DESC, id DESC
-            LIMIT 1
-            """;
+    private static final String SELECT_ACTIVE_TRANSACTION_BY_BOOK_ID = "SELECT id, user_id, book_id, borrowed_at, " +
+            "due_at, returned_at, status, fine_amount, notes, created_at, updated_at FROM transactions " +
+            "WHERE book_id = ? AND returned_at IS NULL AND status IN ('BORROWED', 'OVERDUE') " +
+            "ORDER BY borrowed_at DESC, id DESC LIMIT 1";
 
     public Transaction issueBook(long userId, long bookId, LocalDateTime dueAt, String notes) {
         try (Connection connection = DBConnection.getConnection()) {
@@ -119,8 +70,8 @@ public class TransactionDAO {
                         .orElseThrow(() -> new DAOException("Failed to load newly created transaction with id " + transactionId));
             } catch (Exception exception) {
                 rollbackQuietly(connection);
-                if (exception instanceof DAOException daoException) {
-                    throw daoException;
+                if (exception instanceof DAOException) {
+                    throw (DAOException) exception;
                 }
                 throw new DAOException("Failed to issue book.", exception);
             } finally {
@@ -154,8 +105,8 @@ public class TransactionDAO {
                 return true;
             } catch (Exception exception) {
                 rollbackQuietly(connection);
-                if (exception instanceof DAOException daoException) {
-                    throw daoException;
+                if (exception instanceof DAOException) {
+                    throw (DAOException) exception;
                 }
                 throw new DAOException("Failed to return book.", exception);
             } finally {

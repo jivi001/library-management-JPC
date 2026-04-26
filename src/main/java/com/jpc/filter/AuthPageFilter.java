@@ -22,10 +22,14 @@ public class AuthPageFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
         HttpSession session = httpRequest.getSession(false);
 
-        boolean authenticated = session != null
-                && Boolean.TRUE.equals(session.getAttribute("authenticated"))
-                && session.getAttribute("userId") instanceof Number userId
-                && userId.longValue() > 0L;
+        boolean authenticated = false;
+        if (session != null && Boolean.TRUE.equals(session.getAttribute("authenticated"))) {
+            Object userIdObj = session.getAttribute("userId");
+            if (userIdObj instanceof Number) {
+                Number userId = (Number) userIdObj;
+                authenticated = userId.longValue() > 0L;
+            }
+        }
 
         if (!authenticated) {
             httpResponse.sendRedirect(httpRequest.getContextPath() + "/login?session=expired");

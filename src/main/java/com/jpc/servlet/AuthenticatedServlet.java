@@ -28,15 +28,18 @@ abstract class AuthenticatedServlet extends HttpServlet {
 
         Object authenticatedAttribute = session.getAttribute(AUTHENTICATED_SESSION_KEY);
         Object userIdAttribute = session.getAttribute(USER_ID_SESSION_KEY);
-        if (!(authenticatedAttribute instanceof Boolean authenticated) || !authenticated
-                || !(userIdAttribute instanceof Number userIdNumber) || userIdNumber.longValue() <= 0L) {
+        
+        boolean authenticated = authenticatedAttribute instanceof Boolean && (Boolean) authenticatedAttribute;
+        boolean validUserId = userIdAttribute instanceof Number && ((Number) userIdAttribute).longValue() > 0L;
+
+        if (!authenticated || !validUserId) {
             session.invalidate();
             redirectToLogin(request, response, "expired");
             return null;
         }
 
         applyNoCacheHeaders(response);
-        return userIdNumber.longValue();
+        return ((Number) userIdAttribute).longValue();
     }
 
     protected String normalize(String value) {
@@ -90,10 +93,11 @@ abstract class AuthenticatedServlet extends HttpServlet {
 
         Object authenticatedAttribute = session.getAttribute(AUTHENTICATED_SESSION_KEY);
         Object userIdAttribute = session.getAttribute(USER_ID_SESSION_KEY);
-        return authenticatedAttribute instanceof Boolean authenticated
-                && authenticated
-                && userIdAttribute instanceof Number userIdNumber
-                && userIdNumber.longValue() > 0L;
+        
+        return authenticatedAttribute instanceof Boolean 
+                && (Boolean) authenticatedAttribute
+                && userIdAttribute instanceof Number 
+                && ((Number) userIdAttribute).longValue() > 0L;
     }
 
     protected void forwardToView(HttpServletRequest request, HttpServletResponse response, String viewPath)
@@ -140,20 +144,34 @@ abstract class AuthenticatedServlet extends HttpServlet {
         StringBuilder escaped = new StringBuilder();
         for (char current : value.toCharArray()) {
             switch (current) {
-                case '"' -> escaped.append("\\\"");
-                case '\\' -> escaped.append("\\\\");
-                case '\b' -> escaped.append("\\b");
-                case '\f' -> escaped.append("\\f");
-                case '\n' -> escaped.append("\\n");
-                case '\r' -> escaped.append("\\r");
-                case '\t' -> escaped.append("\\t");
-                default -> {
+                case '"':
+                    escaped.append("\\\"");
+                    break;
+                case '\\':
+                    escaped.append("\\\\");
+                    break;
+                case '\b':
+                    escaped.append("\\b");
+                    break;
+                case '\f':
+                    escaped.append("\\f");
+                    break;
+                case '\n':
+                    escaped.append("\\n");
+                    break;
+                case '\r':
+                    escaped.append("\\r");
+                    break;
+                case '\t':
+                    escaped.append("\\t");
+                    break;
+                default:
                     if (current < 0x20) {
                         escaped.append(String.format("\\u%04x", (int) current));
                     } else {
                         escaped.append(current);
                     }
-                }
+                    break;
             }
         }
         return escaped.toString();

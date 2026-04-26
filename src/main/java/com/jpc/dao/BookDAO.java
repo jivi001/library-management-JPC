@@ -16,59 +16,27 @@ import java.util.Optional;
 
 public class BookDAO {
 
-    private static final String INSERT_BOOK = """
-            INSERT INTO books (
-                isbn,
-                title,
-                author,
-                publisher,
-                category,
-                published_year,
-                total_copies,
-                available_copies,
-                shelf_location,
-                is_active
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """;
+    private static final String INSERT_BOOK = "INSERT INTO books (" +
+            "isbn, title, author, publisher, category, published_year, " +
+            "total_copies, available_copies, shelf_location, active" +
+            ") VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
-    private static final String SELECT_BOOK_BY_ID = """
-            SELECT id, isbn, title, author, publisher, category, published_year,
-                   total_copies, available_copies, shelf_location, is_active,
-                   created_at, updated_at
-            FROM books
-            WHERE id = ?
-            """;
+    private static final String SELECT_BOOK_BY_ID = "SELECT id, isbn, title, author, publisher, category, " +
+            "published_year, total_copies, available_copies, shelf_location, active, " +
+            "created_at, updated_at FROM books WHERE id = ?";
 
-    private static final String SELECT_ALL_ACTIVE_BOOKS = """
-            SELECT id, isbn, title, author, publisher, category, published_year,
-                   total_copies, available_copies, shelf_location, is_active,
-                   created_at, updated_at
-            FROM books
-            WHERE is_active = 1
-            ORDER BY title ASC, author ASC
-            """;
+    private static final String SELECT_ALL_ACTIVE_BOOKS = "SELECT id, isbn, title, author, publisher, category, " +
+            "published_year, total_copies, available_copies, shelf_location, active, " +
+            "created_at, updated_at FROM books WHERE active = 1 " +
+            "ORDER BY title ASC, author ASC";
 
-    private static final String UPDATE_BOOK = """
-            UPDATE books
-            SET isbn = ?,
-                title = ?,
-                author = ?,
-                publisher = ?,
-                category = ?,
-                published_year = ?,
-                total_copies = ?,
-                available_copies = ?,
-                shelf_location = ?,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND is_active = 1
-            """;
+    private static final String UPDATE_BOOK = "UPDATE books SET " +
+            "isbn = ?, title = ?, author = ?, publisher = ?, category = ?, " +
+            "published_year = ?, total_copies = ?, available_copies = ?, shelf_location = ?, " +
+            "updated_at = CURRENT_TIMESTAMP WHERE id = ? AND active = 1";
 
-    private static final String SOFT_DELETE_BOOK = """
-            UPDATE books
-            SET is_active = 0,
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = ? AND is_active = 1
-            """;
+    private static final String SOFT_DELETE_BOOK = "UPDATE books SET " +
+            "active = 0, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND active = 1";
 
     public Book createBook(Book book) {
         try (Connection connection = DBConnection.getConnection();
@@ -182,7 +150,7 @@ public class BookDAO {
                 resultSet.getInt("total_copies"),
                 resultSet.getInt("available_copies"),
                 resultSet.getString("shelf_location"),
-                resultSet.getBoolean("is_active"),
+                resultSet.getBoolean("active"),
                 toLocalDateTime(resultSet.getTimestamp("created_at")),
                 toLocalDateTime(resultSet.getTimestamp("updated_at"))
         );
